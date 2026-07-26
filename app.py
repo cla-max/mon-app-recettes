@@ -24,7 +24,34 @@ phase = st.sidebar.radio(
 
 if api_key:
     genai.configure(api_key=api_key)
-    model = genai.GenerativeModel('models/gemini-1.5-flash-latest')
+    
+    try:
+        # 1. On liste tous les modèles auxquels votre clé a réellement accès
+        available_models = [m.name for m in genai.list_models() if 'generateContent' in m.supported_generation_methods]
+        
+        # 2. On affiche discrètement les modèles trouvés dans la barre latérale pour debug
+        st.sidebar.caption("Modèles disponibles détectés :")
+        st.sidebar.caption(f"{available_models}")
+        
+        # 3. On sélectionne le meilleur modèle disponible automatiquement
+        if 'models/gemini-1.5-flash' in available_models:
+            model_name = 'models/gemini-1.5-flash'
+        elif 'models/gemini-1.5-pro' in available_models:
+            model_name = 'models/gemini-1.5-pro'
+        elif 'models/gemini-pro' in available_models:
+            model_name = 'models/gemini-pro'
+        elif available_models:
+            model_name = available_models[0] # Failsafe : on prend le premier qui marche
+        else:
+            model_name = None
+            st.sidebar.error("Aucun modèle de texte n'est disponible pour cette clé.")
+            
+        if model_name:
+            model = genai.GenerativeModel(model_name)
+            
+    except Exception as e:
+        st.sidebar.error(f"Erreur de connexion à l'API : {e}")
+
 else:
     st.sidebar.warning("Veuillez entrer votre clé API pour utiliser l'IA.")
 
