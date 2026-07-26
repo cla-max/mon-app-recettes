@@ -16,7 +16,6 @@ api_key = st.sidebar.text_input("Clé API Google Gemini", type="password")
 
 st.sidebar.markdown("---")
 st.sidebar.subheader("Phase du Régime SIBO")
-# Remplacement de l'ancien sélecteur par les deux phases spécifiques
 phase = st.sidebar.radio(
     "Sélectionnez votre phase actuelle :",
     ["Phase 1 : Réduction", "Phase 2 : Réintroduction"]
@@ -24,34 +23,8 @@ phase = st.sidebar.radio(
 
 if api_key:
     genai.configure(api_key=api_key)
-    
-    try:
-        # 1. On liste tous les modèles auxquels votre clé a réellement accès
-        available_models = [m.name for m in genai.list_models() if 'generateContent' in m.supported_generation_methods]
-        
-        # 2. On affiche discrètement les modèles trouvés dans la barre latérale pour debug
-        st.sidebar.caption("Modèles disponibles détectés :")
-        st.sidebar.caption(f"{available_models}")
-        
-        # 3. On sélectionne le meilleur modèle disponible automatiquement
-        if 'models/gemini-1.5-flash' in available_models:
-            model_name = 'models/gemini-1.5-flash'
-        elif 'models/gemini-1.5-pro' in available_models:
-            model_name = 'models/gemini-1.5-pro'
-        elif 'models/gemini-pro' in available_models:
-            model_name = 'models/gemini-pro'
-        elif available_models:
-            model_name = available_models[0] # Failsafe : on prend le premier qui marche
-        else:
-            model_name = None
-            st.sidebar.error("Aucun modèle de texte n'est disponible pour cette clé.")
-            
-        if model_name:
-            model = genai.GenerativeModel(model_name)
-            
-    except Exception as e:
-        st.sidebar.error(f"Erreur de connexion à l'API : {e}")
-
+    # Déclaration du modèle avec son chemin complet pour limiter les erreurs 404
+    model = genai.GenerativeModel('models/gemini-1.5-flash') 
 else:
     st.sidebar.warning("Veuillez entrer votre clé API pour utiliser l'IA.")
 
@@ -92,8 +65,12 @@ with tab1:
                 Réponds obligatoirement en commençant par l'une de ces 3 étiquettes : [Autorisé], [À éviter], ou [À consommer avec modération]. 
                 Ensuite, donne une explication claire et concise de 2 ou 3 phrases maximum en te basant sur le protocole SIBO Bi-Phasic.
                 """
-                response = model.generate_content(prompt)
-                st.info(response.text)
+                try:
+                    response = model.generate_content(prompt)
+                    st.info(response.text)
+                except Exception as e:
+                    # Affichage clair de l'erreur sans faire planter l'application
+                    st.error(f"🚨 Erreur exacte renvoyée par Google : {str(e)}")
 
 
 # ==========================================
@@ -114,10 +91,12 @@ with tab2:
                 Génère 2 à 3 recettes STRICTEMENT adaptées à la phase en cours du régime SIBO. N'ajoute sous aucun prétexte de l'ail, de l'oignon ou des aliments interdits dans cette phase.
                 Sépare CHAQUE recette par la chaîne de caractères exacte : "|||". Ne mets rien avant la première recette.
                 """
-                response = model.generate_content(prompt)
-                
-                recipes_raw = response.text.split("|||")
-                st.session_state.generated_recipes = [r.strip() for r in recipes_raw if len(r.strip()) > 20]
+                try:
+                    response = model.generate_content(prompt)
+                    recipes_raw = response.text.split("|||")
+                    st.session_state.generated_recipes = [r.strip() for r in recipes_raw if len(r.strip()) > 20]
+                except Exception as e:
+                    st.error(f"🚨 Erreur exacte renvoyée par Google : {str(e)}")
 
     if st.session_state.generated_recipes:
         st.markdown("### Voici vos propositions :")
@@ -139,9 +118,12 @@ with tab2:
                             L'utilisateur demande cette modification : "{improvement}". 
                             Réécris la recette complète en appliquant cette modification tout en respectant strictement les règles de la phase du régime SIBO.
                             """
-                            response = model.generate_content(prompt_improve)
-                            st.session_state.generated_recipes[i] = response.text
-                            st.rerun() 
+                            try:
+                                response = model.generate_content(prompt_improve)
+                                st.session_state.generated_recipes[i] = response.text
+                                st.rerun() 
+                            except Exception as e:
+                                st.error(f"🚨 Erreur exacte renvoyée par Google lors de l'amélioration : {str(e)}")
             
             with col2:
                 st.write("") 
