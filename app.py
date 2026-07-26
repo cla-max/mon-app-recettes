@@ -24,25 +24,26 @@ phase = st.sidebar.radio(
 if api_key:
     genai.configure(api_key=api_key)
     
-    # --- DÉTECTION AUTOMATIQUE DU MODÈLE ---
     try:
-        # On demande à Google quels modèles votre clé a le droit d'utiliser
+        # 1. On récupère la vraie liste des modèles autorisés pour VOTRE clé
         modeles_autorises = [m.name for m in genai.list_models() if 'generateContent' in m.supported_generation_methods]
         
-        # On choisit le meilleur modèle disponible dans votre liste
-        if 'models/gemini-1.5-flash' in modeles_autorises:
-            nom_modele = 'models/gemini-1.5-flash'
-        elif 'models/gemini-1.5-pro' in modeles_autorises:
-            nom_modele = 'models/gemini-1.5-pro'
+        if not modeles_autorises:
+            st.sidebar.error("Votre clé API n'a accès à aucun modèle de texte.")
         else:
-            # Fallback universel : l'ancien modèle classique, toujours autorisé
-            nom_modele = 'gemini-pro'
+            # 2. On arrête de deviner ! On cherche un modèle avec "flash" ou "pro" dans le nom.
+            # Si on n'en trouve pas, on prend simplement le tout premier modèle de la liste.
+            nom_modele = next((m for m in modeles_autorises if 'flash' in m), None)
             
-        model = genai.GenerativeModel(nom_modele)
-        
-    except Exception:
-        # Si la vérification échoue, on force le modèle universel
-        model = genai.GenerativeModel('gemini-pro')
+            if not nom_modele:
+                nom_modele = next((m for m in modeles_autorises if 'pro' in m), modeles_autorises[0])
+                
+            # 3. On initialise ce modèle (qui est garanti d'exister)
+            model = genai.GenerativeModel(nom_modele)
+            st.sidebar.success(f"Connecté avec succès à : {nom_modele}")
+            
+    except Exception as e:
+        st.sidebar.error(f"Erreur d'initialisation de l'API : {e}")
 
 else:
     st.sidebar.warning("Veuillez entrer votre clé API pour utiliser l'IA.")
