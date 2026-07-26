@@ -24,7 +24,7 @@ phase = st.sidebar.radio(
 
 if api_key:
     genai.configure(api_key=api_key)
-    model = genai.GenerativeModel('gemini-1.5-flash') 
+    model = genai.GenerativeModel('models/gemini-1.5-flash-latest')
 else:
     st.sidebar.warning("Veuillez entrer votre clé API pour utiliser l'IA.")
 
