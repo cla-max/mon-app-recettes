@@ -25,22 +25,23 @@ if api_key:
     genai.configure(api_key=api_key)
     
     try:
-        # 1. On récupère la vraie liste des modèles autorisés pour VOTRE clé
+        # 1. On récupère la liste des modèles
         modeles_autorises = [m.name for m in genai.list_models() if 'generateContent' in m.supported_generation_methods]
         
-        if not modeles_autorises:
-            st.sidebar.error("Votre clé API n'a accès à aucun modèle de texte.")
+        # 2. On filtre le modèle "fantôme" qui pose problème
+        modeles_valides = [m for m in modeles_autorises if "2.5-flash" not in m]
+        
+        if not modeles_valides:
+            st.sidebar.error("Votre clé n'a accès à aucun modèle valide.")
         else:
-            # 2. On arrête de deviner ! On cherche un modèle avec "flash" ou "pro" dans le nom.
-            # Si on n'en trouve pas, on prend simplement le tout premier modèle de la liste.
-            nom_modele = next((m for m in modeles_autorises if 'flash' in m), None)
+            # 3. On crée un menu déroulant pour que VOUS choisissiez le modèle
+            nom_modele = st.sidebar.selectbox(
+                "🤖 Modèle d'IA (changez en cas d'erreur) :", 
+                modeles_valides
+            )
             
-            if not nom_modele:
-                nom_modele = next((m for m in modeles_autorises if 'pro' in m), modeles_autorises[0])
-                
-            # 3. On initialise ce modèle (qui est garanti d'exister)
+            # 4. On charge le modèle sélectionné dans le menu
             model = genai.GenerativeModel(nom_modele)
-            st.sidebar.success(f"Connecté avec succès à : {nom_modele}")
             
     except Exception as e:
         st.sidebar.error(f"Erreur d'initialisation de l'API : {e}")
