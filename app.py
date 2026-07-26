@@ -23,8 +23,27 @@ phase = st.sidebar.radio(
 
 if api_key:
     genai.configure(api_key=api_key)
-    # Déclaration du modèle avec son chemin complet pour limiter les erreurs 404
-    model = genai.GenerativeModel('models/gemini-1.5-flash') 
+    
+    # --- DÉTECTION AUTOMATIQUE DU MODÈLE ---
+    try:
+        # On demande à Google quels modèles votre clé a le droit d'utiliser
+        modeles_autorises = [m.name for m in genai.list_models() if 'generateContent' in m.supported_generation_methods]
+        
+        # On choisit le meilleur modèle disponible dans votre liste
+        if 'models/gemini-1.5-flash' in modeles_autorises:
+            nom_modele = 'models/gemini-1.5-flash'
+        elif 'models/gemini-1.5-pro' in modeles_autorises:
+            nom_modele = 'models/gemini-1.5-pro'
+        else:
+            # Fallback universel : l'ancien modèle classique, toujours autorisé
+            nom_modele = 'gemini-pro'
+            
+        model = genai.GenerativeModel(nom_modele)
+        
+    except Exception:
+        # Si la vérification échoue, on force le modèle universel
+        model = genai.GenerativeModel('gemini-pro')
+
 else:
     st.sidebar.warning("Veuillez entrer votre clé API pour utiliser l'IA.")
 
