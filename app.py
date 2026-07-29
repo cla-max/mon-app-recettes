@@ -270,7 +270,7 @@ db_phase_1 = {
 		"pistaches": "[À éviter] Certaines noix et graines ne sont pas autorisées dans le régime semi-restreint.",
 		"vinaigre balsamique": "[À éviter] Certains condiments, herbes, épices ne sont pas autorisés dans le régime semi-restreint.",
 		"racines de chicorée": "[À éviter] Certains condiments, herbes, épices ne sont pas autorisés dans le régime semi-restreint.",
-		"sauces soja": "[À éviter] Certains condiments, herbes, épices ne sont pas autorisés dans le régime semi-restreint.",
+		"sauces soja": "[À éviter] Certains condiments, herbes, épices ne sont pas autorisés dans le régime semi-restreint."
     }
     
     db_phase_2 = {
