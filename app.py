@@ -26,21 +26,16 @@ model = None
 if api_key:
     genai.configure(api_key=api_key)
     try:
-        # 1. On récupère la liste des modèles
         modeles_autorises = [m.name for m in genai.list_models() if 'generateContent' in m.supported_generation_methods]
-        
-        # 2. On filtre le modèle "fantôme" qui pose problème
         modeles_valides = [m for m in modeles_autorises if "2.5-flash" not in m]
         
         if not modeles_valides:
             st.sidebar.error("Votre clé n'a accès à aucun modèle valide.")
         else:
-            # 3. On crée un menu déroulant pour que VOUS choisissiez le modèle
             nom_modele = st.sidebar.selectbox(
                 "🤖 Modèle d'IA (changez en cas d'erreur) :", 
                 modeles_valides
             )
-            # 4. On charge le modèle sélectionné dans le menu
             model = genai.GenerativeModel(nom_modele)
             
     except Exception as e:
@@ -68,7 +63,7 @@ tab1, tab2, tab3 = st.tabs(["🔍 Vérificateur d'aliment", "🍳 Générateur d
 
 
 # ==========================================
-# ONGLET 1 : VÉRIFICATEUR D'ALIMENT (HYBRIDE & COULEURS)
+# ONGLET 1 : VÉRIFICATEUR D'ALIMENT (MENU + LIKE + IA)
 # ==========================================
 with tab1:
     st.header("Vérifier un ingrédient")
@@ -288,22 +283,56 @@ with tab1:
         else:
             st.info(texte) # Bleu par défaut
 
-    aliment = st.text_input("Entrez un aliment à vérifier (ex: ail, lentilles, poulet)")
+    # --- MENU DÉROULANT AVEC AUTOCOMPLÉTION NATIVE ---
+    db_actuelle = db_phase_1 if phase == "Phase 1 : Réduction" else db_phase_2
+    
+    # Création de la liste combinée pour le menu déroulant
+    options_menu = ["🔍 Autre aliment (Saisie libre / IA)"] + sorted(list(db_actuelle.keys()))
+    
+    selection = st.selectbox(
+        "Sélectionnez un ingrédient dans la liste (ou tapez pour filtrer) :", 
+        options_menu
+    )
+    
+    # Si l'utilisateur veut faire une recherche libre (hors menu exact)
+    if selection == "🔍 Autre aliment (Saisie libre / IA)":
+        aliment = st.text_input("Tapez l'aliment à vérifier (ex: ail, lentilles, poulet) :")
+    else:
+        aliment = selection
     
     if st.button("Vérifier"):
         if aliment:
             aliment_propre = aliment.strip().lower()
-            db_actuelle = db_phase_1 if phase == "Phase 1 : Réduction" else db_phase_2
+            mots_saisis = aliment_propre.split()
             
-            # 1. Vérification base locale
-            if aliment_propre in db_actuelle:
-                st.caption(f"✅ Aliment reconnu dans vos règles strictes ({phase})")
-                afficher_resultat_couleur(db_actuelle[aliment_propre])
+            # --- RECHERCHE "LIKE" (Sous-chaîne) ---
+            resultats_trouves = {}
+            for cle, valeur in db_actuelle.items():
+                # 1. Si la saisie exacte est dans la clé ou si la clé est dans la saisie
+                if aliment_propre in cle or cle in aliment_propre:
+                    resultats_trouves[cle] = valeur
+                else:
+                    # 2. Si au moins un mot de + de 2 lettres est dans la clé
+                    for mot in mots_saisis:
+                        if len(mot) > 2 and mot in cle:
+                            resultats_trouves[cle] = valeur
+                            break
             
-            # 2. Si inconnu -> IA
+            # --- AFFICHAGE DES RÉSULTATS LOCAUX ---
+            if resultats_trouves:
+                if len(resultats_trouves) == 1:
+                    st.caption(f"✅ Résultat trouvé dans vos règles strictes ({phase}) :")
+                else:
+                    st.caption(f"✅ Plusieurs correspondances trouvées dans vos règles strictes ({phase}) :")
+                    
+                for cle, valeur in resultats_trouves.items():
+                    st.markdown(f"**{cle.capitalize()}**")
+                    afficher_resultat_couleur(valeur)
+            
+            # --- SI AUCUN RÉSULTAT -> APPEL IA ---
             else:
                 if not model:
-                    st.error("L'aliment est inconnu dans votre base. Veuillez entrer et valider une clé API valide dans le menu pour que l'IA puisse l'analyser.")
+                    st.error("L'aliment est inconnu dans votre base. Veuillez sélectionner un modèle valide dans le menu de gauche pour que l'IA puisse l'analyser.")
                 else:
                     st.caption("🤖 Aliment inconnu dans vos règles. Analyse par l'IA en cours...")
                     with st.spinner("Recherche dans le savoir de l'IA..."):
@@ -329,7 +358,7 @@ with tab2:
     
     if st.button("Générer des recettes"):
         if not model:
-            st.error("Veuillez d'abord renseigner votre clé API dans la barre latérale.")
+            st.error("Veuillez d'abord renseigner votre clé API et sélectionner un modèle dans la barre latérale.")
         elif ingredients:
             with st.spinner("Création des recettes adaptées..."):
                 prompt = f"""
